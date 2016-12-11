@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
@@ -31,9 +33,10 @@ import org.springframework.web.servlet.ModelAndView;
 @Controller
 public class FilecontentController {
      
-    @RequestMapping(value = "/filecontent",method = RequestMethod.GET,consumes = {"multipart/form-data"})
+    @RequestMapping(value = "/filecontent",method = RequestMethod.GET)
     public ModelAndView onSubmitFile(HttpServletRequest request, 
-            @RequestParam("file") MultipartFile file){
+            @RequestPart("file") MultipartFile file){
+             Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,request.getContentType());
         String rootPath = request.getSession().getServletContext().getContextPath();
         File dir = new File(rootPath + File.separator);
         if (!dir.exists()) {

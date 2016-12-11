@@ -75,6 +75,7 @@ public class UploadHandler extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+     Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,response);
      Part filePart = request.getPart("file"); // Retrieves <input type="file" name="file">
      Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,filePart.getName());
      String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString(); // MSIE fix.
