@@ -7,7 +7,7 @@
         <meta http-equiv="Content-Type" content="text/html"; charset=UTF-8">
         <title>Welcome to Spring Web MVC project</title>
     </head>
-    <form form-method="POST" action="filecontent" enctype="multipart/form-data" >
+        <form form-method="post" action="UploadHandler" enctype="multipart/form-data" >
         <p>Select File to Upload</p>
         <input type="file" name ="file" >
         <input type="submit" value="upload">
