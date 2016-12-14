@@ -5,11 +5,35 @@
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html"; charset=UTF-8">
-        <title>Welcome to Spring Web MVC project</title>
+        <title>Welcome </title>
+         <style>
+            .headertext{
+                align-self: center;
+                margin-left: 500px;
+                margin-right: 500px
+            } 
+            .chooseFile{
+                height: 100px;
+                width: 170px;
+                margin-left: 400px;
+                margin-right: 200px;
+                align-self: flex-start;
+            }
+            .submitbuttin{
+                height: 150px;
+                width:80px; 
+                align-content: center;
+                align-self: flex-end;
+            }
+        </style> 
     </head>
-        <form form-method="post" action="UploadHandler" enctype="multipart/form-data" >
-        <p>Select File to Upload</p>
+    <body style="background-color:buttonface">
+        <form method="POST" action="UploadHandler" enctype="multipart/form-data" >
+            <p class="headertext">Select File to Upload</p>
+            <div class="chooseFile">
         <input type="file" name ="file" >
-        <input type="submit" value="upload">
+        <input type="submit" value="upload" class="submitbuttin">
+        </div>   
     </form> 
+        </body>
 </html>

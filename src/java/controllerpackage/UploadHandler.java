@@ -5,14 +5,17 @@
  */
 package controllerpackage;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import com.mysql.jdbc.Connection;
+import com.mysql.jdbc.Statement;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.nio.file.Paths;
+import java.io.Reader;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.ServletException;
@@ -21,21 +24,33 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
-import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
 
 /**
  *
  * @author Jubril
  */
-@WebServlet(name = "UploadHandler", urlPatterns = {"/UploadHandler"})
+@Controller
+@WebServlet(name = "UploadHandler")
 @MultipartConfig
+@RequestMapping(value = "filecontent")
 public class UploadHandler extends HttpServlet {
+    private final String DB_USERNAME="root";
+    private final String DB_NAME = "csvdb";
+    private final String DB_URL = "jdbc:mysql://localhost:3306/";
+    private final String DB_PASSWORD ="";
+    private final String DB_DRIVER="com.mysql.jdbc.Driver";
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -75,36 +90,7 @@ public class UploadHandler extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-     Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,response);
-     Part filePart = request.getPart("file"); // Retrieves <input type="file" name="file">
-     Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,filePart.getName());
-     String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString(); // MSIE fix.
-//     InputStream fileContent = filePart.getInputStream();
- Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,fileName);
-
-        try {
-            System.out.println("header");
-            Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null,request.getHeader("file"));
-            String fileContent = null;
-            ServletFileUpload upload = new ServletFileUpload();
-            FileItemIterator iterator = upload.getItemIterator(request);
-                while (iterator.hasNext()) {
-                    System.out.println("and here");
-                    FileItemStream item = iterator.next();
-                    InputStream in = item.openStream();
-                  fileContent = IOUtils.toString(in, "UTF-8");
-                  IOUtils.closeQuietly(in);
-                    PrintWriter writer = response.getWriter();
-                    writer.println(fileContent);
-                    writer.flush();
-                    System.out.println(fileContent);
-              
-//                
-                IOUtils.closeQuietly(in);
-break;
-                }   } catch (FileUploadException ex) {
-                    Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null, ex);
-                }
+        
         } 
     
     
@@ -120,9 +106,34 @@ break;
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-       
-	}
+        try {
+              List csvRecords = readFileUsingApacheLib(request);
+              setUpConnection(csvRecords);
+            } catch (FileUploadException ex) {
+                   Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null, ex);
+                   
+            }
+//        leavePage();
+getServletContext().getRequestDispatcher("/filecontent")
+    .forward(request, response);                 
+        
+    }
 
+    private List readFileUsingApacheLib(HttpServletRequest request) throws FileUploadException, IOException {
+        CSVFormat csvFileFormat = CSVFormat.DEFAULT.withHeader();
+        ServletFileUpload upload = new ServletFileUpload();
+        FileItemIterator iterator = upload.getItemIterator(request);
+        FileItemStream item = iterator.next();
+        Reader reader = new InputStreamReader(item.openStream());
+        CSVParser csvFileParser = new CSVParser(reader, csvFileFormat);
+        List csvRecords = csvFileParser.getRecords();
+        return csvRecords;
+    }
+    
+    
+    public ModelAndView leavePage(){
+         return new ModelAndView("/filecontent");
+    }
     
 
     /**
@@ -136,7 +147,7 @@ break;
     }// </editor-fold>
 
     
-    private String readFile(HttpServletRequest request) throws IOException, FileUploadException {
+    private String readFileUsingIOUtils(HttpServletRequest request) throws IOException, FileUploadException {
     String fileContent = null;
     ServletFileUpload upload = new ServletFileUpload();
     FileItemIterator iterator = upload.getItemIterator(request);
@@ -154,4 +165,64 @@ break;
 
     return fileContent;
   }
+
+    private Connection setUpConnection(List records){
+        Connection connection = null;
+        try {
+            Class.forName(DB_DRIVER);
+            connection = (Connection) DriverManager.getConnection(DB_URL,DB_USERNAME,DB_PASSWORD);
+            if (connection!=null) {
+                createDbAndTables(connection);
+//                loadDataIntoDb(connection, records);
+                connection.close();
+            }
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException ex) {
+            Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        return  connection;
+    }
+    
+    private void createDbAndTables(Connection connection){
+        try {
+            Statement createDbAndTableStatement = (Statement) connection.createStatement();
+            createDbAndTableStatement.addBatch("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
+            createDbAndTableStatement.addBatch("USE "+ DB_NAME);
+            createDbAndTableStatement.addBatch("CREATE TABLE IF NOT EXISTS "+DB_NAME +
+                                       " ( ID INT(64) NOT NULL AUTO_INCREMENT,"+
+                                       " DATE STRING(20) NOT NULL," +
+                                       " OPEN DOUBLE NOT NULL," +
+                                       " HIGH DOUBLE NOT NULL," +
+                                       " LOW  DOUBLE NOT NULL," +
+                                       " CLOSE DOUBLE NOT NULL," +
+                                       " VOLUME INT NOT NULL," +
+                                       " ADJCLOSE DOUBLE NOT NULL,"+
+                                       " PRIMARY KEY (ID))");
+            createDbAndTableStatement.executeBatch();
+        } catch (SQLException ex) {
+            Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private void loadDataIntoDb(Connection connection,List records){
+        try {
+            Statement statement = (Statement) connection.createStatement();
+            for (Iterator it = records.iterator(); it.hasNext();) {
+                CSVRecord cSVRecord = (CSVRecord) it.next();
+                cSVRecord.get("Date");
+                String insertQuery = "INSERT INTO "+DB_NAME+" VALUES (0,"+cSVRecord.get("Date")
+                        +","+cSVRecord.get("Open")+","+cSVRecord.get("High")+","+cSVRecord.get("Low")
+                        +","+cSVRecord.get("Close")+","+cSVRecord.get("Volume")+","+cSVRecord.get("Adj Close")+")";
+                statement.execute(insertQuery);
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(UploadHandler.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    
+    
+    
 }
